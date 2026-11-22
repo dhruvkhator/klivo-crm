@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.utils import flt
 from frappe.model.document import Document
 
 
@@ -191,3 +192,19 @@ class CRMProducts {
   }
 }"""
 	)
+
+
+def compute_product_totals(doc):
+	"""Server-side twin of the form script's update_total(), so API, import and automation
+	writes get the same line amounts and totals as the UI."""
+	if not doc.get("products"):
+		return
+	total = net_total = 0
+	for row in doc.products:
+		row.amount = flt(row.qty) * flt(row.rate)
+		row.discount_amount = flt(row.discount_percentage) / 100 * row.amount if flt(row.discount_percentage) else 0
+		row.net_amount = row.amount - flt(row.discount_amount)
+		total += row.amount
+		net_total += row.net_amount
+	doc.total = total
+	doc.net_total = net_total

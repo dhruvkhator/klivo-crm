@@ -9,6 +9,7 @@ from frappe.desk.form.assign_to import _add as assign
 from frappe.model.document import Document
 from frappe.utils import validate_email_address
 
+from crm.fcrm.doctype.crm_products.crm_products import compute_product_totals
 from crm.automation.events import emit_lead_converted
 from crm.fcrm.doctype.crm_service_level_agreement.utils import get_sla
 from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import (
@@ -88,6 +89,7 @@ class CRMLead(Document):
 		self.set_sla()
 
 	def validate(self):
+		compute_product_totals(self)
 		self.validate_status()
 		self.set_full_name()
 		self.set_lead_name()

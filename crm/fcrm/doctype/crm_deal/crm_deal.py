@@ -6,6 +6,7 @@ from frappe import _
 from frappe.desk.form.assign_to import _add as assign
 from frappe.model.document import Document
 
+from crm.fcrm.doctype.crm_products.crm_products import compute_product_totals
 from crm.api.exchange_rate import get_exchange_rate
 from crm.fcrm.doctype.crm_service_level_agreement.utils import get_sla
 from crm.fcrm.doctype.crm_status_change_log.crm_status_change_log import add_status_change_log
@@ -87,6 +88,7 @@ class CRMDeal(Document):
 		self.set_sla()
 
 	def validate(self):
+		compute_product_totals(self)
 		self.validate_status()
 		self.set_primary_contact()
 		self.set_primary_email_mobile_no()
