@@ -419,11 +419,10 @@ export function registerCommsTools(server: McpServer) {
     {
       title: "Upload a file",
       description:
-        "Saves a file in the CRM (deck, proposal, one-pager, or a CSV for import_preview) from base64 content or an https URL, optionally attached to a lead or deal. Private by default. Returns the File ID (use it for email attachments or import_preview) and its URL. Max 25 MB.",
+        "Saves a file in the CRM (deck, proposal, one-pager, or a CSV for import_preview) from base64 content, optionally attached to a lead or deal. Private by default. Returns the File ID (use it for email attachments or import_preview) and its URL. Max 25 MB.",
       input: {
         file_name: z.string().describe("e.g. Klivo-Intro.pdf"),
-        content_base64: z.string().optional(),
-        url: z.string().url().optional().describe("Public https URL to fetch the file from"),
+        content_base64: z.string().min(1),
         attach_to_doctype: z.enum(["CRM Lead", "CRM Deal", "Contact", "CRM Organization"]).optional(),
         attach_to_name: z.string().optional(),
         is_private: z.boolean().default(true),
@@ -431,14 +430,9 @@ export function registerCommsTools(server: McpServer) {
       kind: "write",
     },
     async (a, token) => {
-      let content: Buffer;
-      if (a.content_base64) content = Buffer.from(a.content_base64, "base64");
-      else if (a.url) {
-        if (!a.url.startsWith("https://")) throw new Error("Only https URLs are allowed");
-        const res = await fetch(a.url, { signal: AbortSignal.timeout(60_000) });
-        if (!res.ok) throw new Error(`Download failed (HTTP ${res.status})`);
-        content = Buffer.from(await res.arrayBuffer());
-      } else throw new Error("Give content_base64 or url");
+      // Size check on the base64 text first, so an oversized upload is never decoded.
+      if (a.content_base64.length > Math.ceil((MAX_UPLOAD_BYTES * 4) / 3) + 4) throw new Error("File is larger than 25 MB");
+      const content = Buffer.from(a.content_base64, "base64");
       if (!content.length) throw new Error("File is empty");
       if (content.length > MAX_UPLOAD_BYTES) throw new Error("File is larger than 25 MB");
       const f = await uploadFile(token, {

@@ -72,11 +72,22 @@ async function getMeta(token: string, doctype: string) {
   return res.docs.find((d) => d.name === doctype) ?? res.docs[0];
 }
 
+/** System/workflow fields that should never come from a sheet. */
+const SYSTEM_FIELDS = new Set([
+  "naming_series", "converted", "sla", "sla_creation", "sla_status", "response_by", "first_response_time",
+  "first_responded_on", "communication_status", "status_change_log", "lead_score", "image", "lost_reason", "lost_notes",
+]);
 const SKIP_TYPES = new Set(["Section Break", "Column Break", "Tab Break", "HTML", "Button", "Fold", "Table", "Table MultiSelect", "Attach Image"]);
 
 async function importableFields(token: string, doctype: ImportDoctype) {
   const meta = await getMeta(token, doctype);
-  const fields = (meta.fields as any[]).filter((f) => !SKIP_TYPES.has(f.fieldtype) && !f.hidden && !(f.read_only && !["email_id", "mobile_no", "phone"].includes(f.fieldname)));
+  const fields = (meta.fields as any[]).filter(
+    (f) =>
+      !SKIP_TYPES.has(f.fieldtype) &&
+      !SYSTEM_FIELDS.has(f.fieldname) &&
+      !f.hidden &&
+      !(f.read_only && !["email_id", "mobile_no", "phone"].includes(f.fieldname)),
+  );
   return fields;
 }
 
@@ -183,9 +194,9 @@ async function runImport(job: Job, token: string, p: Preview, onDuplicate: strin
       });
     }
     const toDoc = (r: Row) => ({
-      doctype: p.doctype,
       ...(p.doctype === "Contact" ? toContactDoc(r) : r),
       ...(p.import_batch && p.doctype === "CRM Lead" ? { import_batch: p.import_batch } : {}),
+      doctype: p.doctype,
     });
     const newRows = p.verdicts.filter((v) => v.verdict === "new").map((v) => v.row);
     const existing = p.verdicts.filter((v): v is Extract<Verdict, { verdict: "exists_in_crm" }> => v.verdict === "exists_in_crm");
@@ -356,7 +367,9 @@ export function registerImportTools(server: McpServer) {
           const v = typeof val === "string" ? val.trim() : val;
           if (v !== "" && v !== null && v !== undefined) out[field] = v;
         }
-        for (const [k, v] of Object.entries(a.default_values ?? {})) if (out[k] === undefined) out[k] = v;
+        for (const [k, v] of Object.entries(a.default_values ?? {})) {
+          if (fieldNames.has(k) && out[k] === undefined) out[k] = v;
+        }
         return out;
       });
 
