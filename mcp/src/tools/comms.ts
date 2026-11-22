@@ -10,6 +10,14 @@ const DNC_STATUS = "Do Not Contact";
 const SEND_TTL = 60 * 60; // an approved draft stays valid for 1 hour
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
+/**
+ * Frappe renders Email Templates with the record's fields as the context, so {{ first_name }} works but
+ * {{ doc.first_name }} (the CRM's documented style) fails. Provide both.
+ */
+function templateContext(doc: Record<string, any>) {
+  return { ...doc, doc };
+}
+
 async function getDoc<T = any>(token: string, doctype: string, name: string): Promise<T> {
   return (await frappeRequest<{ data: T }>(token, "GET", resourcePath(doctype, name))).data;
 }
@@ -121,7 +129,7 @@ export function registerCommsTools(server: McpServer) {
         const r = await callMethod<{ subject: string; message: string }>(
           token,
           "frappe.email.doctype.email_template.email_template.get_email_template",
-          { template_name: a.template, doc },
+          { template_name: a.template, doc: templateContext(doc) },
         );
         subject = a.subject ?? r.subject;
         content = r.message;
@@ -283,7 +291,7 @@ export function registerCommsTools(server: McpServer) {
       const doc = await getDoc(token, reference_doctype, reference_name);
       return callMethod(token, "frappe.email.doctype.email_template.email_template.get_email_template", {
         template_name: template,
-        doc,
+        doc: templateContext(doc),
       });
     },
   );
@@ -336,7 +344,7 @@ export function registerCommsTools(server: McpServer) {
       const r = await callMethod<{ subject: string; message: string }>(
         token,
         "frappe.email.doctype.email_template.email_template.get_email_template",
-        { template_name: template, doc },
+        { template_name: template, doc: templateContext(doc) },
       );
       return { sample_record: name ?? "(none yet, rendered with empty values)", subject: r.subject, body: r.message };
     } catch (err) {
