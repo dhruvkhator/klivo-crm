@@ -1,0 +1,30 @@
+# Separate compose project from the CRM ("klivo_crm"), so `docker compose` here never touches CRM containers or volumes.
+name: klivo_mcp
+
+services:
+  mcp:
+    build: .
+    image: klivo-crm-mcp:2.0.0
+    restart: unless-stopped
+    environment:
+      PUBLIC_URL: https://mcp-crm.getklivo.com
+      FRAPPE_URL: https://crm.getklivo.com
+      OAUTH_CLIENT_ID: 4s6r3ga83j
+      PORT: "8000"
+    # Reach the CRM via this box's own Traefik instead of looping out through the public IP.
+    extra_hosts:
+      - "crm.getklivo.com:host-gateway"
+    mem_limit: 384m
+    networks: [crm]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${CRM_NETWORK:-klivo_crm_default}
+      - traefik.http.routers.klivo-mcp.rule=Host(`mcp-crm.getklivo.com`)
+      - traefik.http.routers.klivo-mcp.entrypoints=websecure
+      - traefik.http.routers.klivo-mcp.tls.certresolver=${CERT_RESOLVER:-main-resolver}
+      - traefik.http.services.klivo-mcp.loadbalancer.server.port=8000
+
+networks:
+  crm:
+    external: true
+    name: ${CRM_NETWORK:-klivo_crm_default}
