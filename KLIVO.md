@@ -5,7 +5,7 @@ Everything for crm.getklivo.com in one repo, on branch `klivo-v16.3.0` (based on
 | What | Where |
 |---|---|
 | Frappe CRM code + our fixes (B1 product totals on the server, B2 status times in site timezone, B3 lead conversion recorded) | the repo itself, as separate commits on top of v16.3.0 |
-| Docker image the server runs | `.github/workflows/klivo-image.yml` builds `ghcr.io/dhruvkhator/crm:<TAG>` on every push to `klivo-*` |
+| Docker image the server runs | `.github/workflows/klivo-image.yml` builds `ghcr.io/dhruvkhator/klivo-crm-app:<TAG>` on every push to `klivo-*` |
 | Claude MCP connector (mcp-crm.getklivo.com) | `mcp/` (see `mcp/README.md`) |
 
 ## Update the CRM on the server
