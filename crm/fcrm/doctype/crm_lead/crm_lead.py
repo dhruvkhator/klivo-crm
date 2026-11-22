@@ -604,9 +604,21 @@ def settle_converted(lead, deal: str, if_converted: str) -> str:
 
 
 def mark_converted(lead):
-	if frappe.db.exists("CRM Lead Status", "Qualified"):
-		lead.db_set("status", "Qualified")
-	lead.db_set("converted", 1)
+	# Save through the document (not db_set) so the status change log, version and
+	# timeline record the conversion. Prefer a "Converted" status when one exists.
+	status = next((s for s in ("Converted", "Qualified") if frappe.db.exists("CRM Lead Status", s)), None)
+	lead.reload()
+	if status:
+		lead.status = status
+	lead.converted = 1
+	try:
+		lead.save(ignore_permissions=True)
+	except frappe.ValidationError:
+		# Legacy data that no longer validates must not block conversion: fall back to the old path.
+		frappe.clear_last_message()
+		if status:
+			lead.db_set("status", status)
+		lead.db_set("converted", 1)
 	if lead.sla and frappe.db.exists("CRM Communication Status", "Replied"):
 		lead.db_set("communication_status", "Replied")
 
